@@ -46,7 +46,7 @@ geomarsh-viewer/
 
 ## Changing colors
 
-Edit `PRIORITY_COLORS` and `SUITABILITY_COLORS` near the top of `index.html`.
+Edit `CURRENT_COLORS`, `FUTURE_COLORS` and `SUITABILITY_COLORS` near the top of `index.html`.
 Each list has five colors, for `< 0.5`, `0.5–0.6`, `0.6–0.75`, `0.75–0.9`, `> 0.9`.
 
 ## Testing locally
