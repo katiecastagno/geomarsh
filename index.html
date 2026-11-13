@@ -77,6 +77,19 @@
   .legend .lab { font-size: 10.5px; color: var(--muted); text-align: center; white-space: nowrap; }
   .legend-title { font-size: 12px; font-weight: 600; margin: 8px 0 3px; }
 
+  /* Highlight chips */
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip-btn { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 8px; border-radius: 14px;
+              border: 1px solid #cfd8de; background: #fff; color: var(--ink); font-size: 12.5px; font-weight: 600; }
+  .chip-btn .dot { width: 10px; height: 10px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0,0,0,.25); }
+  .chip-btn:hover { border-color: var(--brand-2); }
+  .chip-btn[aria-pressed="true"] { background: var(--brand-light); border-color: var(--brand-2); color: var(--brand); }
+  .chip-btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+  .hint { font-size: 11.5px; color: var(--muted); margin-top: 6px; display: none; }
+  .hint.show { display: block; }
+  .section .clear { float: right; background: none; border: 0; padding: 0; color: var(--brand-2);
+                    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; display: none; }
+
   /* Re-open tab when panel collapsed */
   #openPanel { position: absolute; top: 14px; left: 14px; z-index: 4; display: none;
                background: var(--brand); color: #fff; border: 0; border-radius: 10px; padding: 8px 12px;
@@ -172,6 +185,10 @@
       <div id="swipeLegends"></div>
     </div>
 
+    <div class="section">Highlight <button class="clear" id="clearFlags">Clear</button></div>
+    <div class="chips" id="flagChips"></div>
+    <div class="hint" id="flagHint">Zoom in to see highlighted cells.</div>
+
     <div class="section">Opacity</div>
     <input type="range" id="opacity" min="0" max="1" step="0.05" value="0.85">
 
@@ -198,7 +215,8 @@
 
       <h2>Using the map</h2>
       <p>Turn layers on and off with the switches, or turn on <b>Swipe compare</b> and drag the handle to compare
-         any two layers side by side. Zoom in and click a grid cell to see every component score.</p>
+         any two layers side by side. Use the <b>Highlight</b> chips to mark cells with a given status, such as
+         ditches or restricted areas (visible when zoomed in). Zoom in and click a grid cell to see every component score.</p>
 
       <div class="foot">Center for Coastal Studies · This is a beta release; data and scores may change.</div>
       <button class="primary" id="startBtn">Explore the map</button>
@@ -245,6 +263,17 @@ const LABELS = {
   Status_Restricted: "Restricted", Status_Unvegetated: "Unvegetated", Status_Ditch: "Ditch",
   Status_Phrag: "Phragmites", Status_Marsh: "Marsh", Status_Accommodation: "Accommodation"
 };
+// Status flags for the Highlight chips (cells where the field = 1 are drawn in this color, on top)
+const FLAGS = [
+  { field: "Status_Restricted",    label: "Restricted",    color: "#ffd400" },
+  { field: "Status_Ditch",         label: "Ditch",         color: "#00e5ff" },
+  { field: "Status_Phrag",         label: "Phragmites",    color: "#7cfc00" },
+  { field: "Status_Unvegetated",   label: "Unvegetated",   color: "#ffffff" },
+  { field: "Status_Marsh",         label: "Marsh",         color: "#1b7f4b" },
+  { field: "Status_Accommodation", label: "Accommodation", color: "#ff7f00" }
+];
+const FLAG_OPACITY = 0.9;
+
 const POPUP_GROUPS = [
   ["Prioritization_Score_Current", "Prioritization_Score_Future", "Suitability_Score"],
   ["Elevation_Score", "Slope_Score", "AccomProximity_Score", "AccomThickness_Score", "SedAvailability_Score"],
@@ -266,6 +295,13 @@ function makeStyle() {
     id: "cls-" + k, type: "fill", source: "classes", "source-layer": k,
     layout: { visibility: "none" },
     paint: { "fill-color": clsColor(SCORES[k].colors), "fill-opacity": 0.85, "fill-antialias": false }
+  }));
+  // Highlighted status cells (drawn above the class colors; shown wherever detail tiles exist)
+  FLAGS.forEach(f => layers.push({
+    id: "flag-" + f.field, type: "fill", source: "detail", "source-layer": "detail",
+    layout: { visibility: "none" },
+    filter: ["==", ["to-number", ["get", f.field], 0], 1],
+    paint: { "fill-color": f.color, "fill-opacity": FLAG_OPACITY, "fill-antialias": false }
   }));
   // Invisible full-detail cells, used only for click popups
   layers.push({ id: "detail", type: "fill", source: "detail", "source-layer": "detail", minzoom: 16,
@@ -360,6 +396,44 @@ async function apply() {
   }
 }
 apply();
+
+// ===========================================================================
+// Highlight chips
+// ===========================================================================
+const flagOn = new Set();
+$("flagChips").innerHTML = FLAGS.map(f => `
+  <button class="chip-btn" data-field="${f.field}" aria-pressed="false">
+    <span class="dot" style="background:${f.color}"></span>${f.label}
+  </button>`).join("");
+
+document.querySelectorAll("#flagChips .chip-btn").forEach(btn =>
+  btn.addEventListener("click", () => {
+    const f = btn.dataset.field;
+    flagOn.has(f) ? flagOn.delete(f) : flagOn.add(f);
+    applyFlags();
+  }));
+$("clearFlags").addEventListener("click", () => { flagOn.clear(); applyFlags(); });
+
+// The detail tiles only exist from this zoom up (read from the file itself)
+let detailMinZoom = 16;
+async function applyFlags() {
+  document.querySelectorAll("#flagChips .chip-btn").forEach(btn =>
+    btn.setAttribute("aria-pressed", flagOn.has(btn.dataset.field) ? "true" : "false"));
+  $("clearFlags").style.display = flagOn.size ? "inline" : "none";
+  await loaded;
+  [map, compare].forEach(m => FLAGS.forEach(f =>
+    m.setLayoutProperty("flag-" + f.field, "visibility", flagOn.has(f.field) ? "visible" : "none")));
+  updateHint();
+}
+function updateHint() {
+  $("flagHint").classList.toggle("show", flagOn.size > 0 && map.getZoom() < detailMinZoom);
+}
+map.on("zoom", updateHint);
+loaded.then(() => {
+  const src = map.getSource("detail");
+  if (src && Number.isFinite(src.minzoom)) detailMinZoom = src.minzoom;
+  updateHint();
+});
 
 // ===========================================================================
 // About dialog + panel collapse

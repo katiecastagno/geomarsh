@@ -19,6 +19,8 @@ geomarsh-viewer/
 
 - On/off switches for Current prioritization, Future prioritization, and Suitability
 - Swipe compare between any two layers
+- Highlight chips for the status flags (Restricted, Ditch, Phragmites, Unvegetated, Marsh,
+  Accommodation): turn one or more on to draw those cells on top of the map (shown when zoomed in)
 - Click a cell (zoomed in) for all component scores and status flags; the cell is outlined
 - Opacity slider
 
@@ -48,6 +50,7 @@ geomarsh-viewer/
 
 Edit `CURRENT_COLORS`, `FUTURE_COLORS` and `SUITABILITY_COLORS` near the top of `index.html`.
 Each list has five colors, for `< 0.5`, `0.5–0.6`, `0.6–0.75`, `0.75–0.9`, `> 0.9`.
+Highlight colors are in the `FLAGS` list just below.
 
 ## Testing locally
 
