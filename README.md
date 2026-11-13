@@ -8,40 +8,53 @@ hosted for free on GitHub Pages.
 
 ```
 geomarsh-viewer/
-├── index.html              # the viewer
+├── index.html
 ├── README.md
 └── data/
-    └── geomarsh.pmtiles    # grid tiles (built with tippecanoe)
+    ├── classes.pmtiles     # solid, dissolved class polygons (what you see)
+    └── detail.pmtiles      # individual cells with all attributes (click popups)
 ```
 
 ## Features
 
-- Imagery basemap with the prioritization grid on top
-- Switch between Current prioritization, Future prioritization, and Suitability
-- Swipe to compare Current (left) vs Future (right)
-- Click any cell for all component scores and status flags
-- Grid opacity slider
+- On/off switches for Current prioritization, Future prioritization, and Suitability
+- Swipe compare between any two layers
+- Click a cell (zoomed in) for all component scores and status flags; the cell is outlined
+- Opacity slider
 
-## Updating the data
+## Building / updating the data
 
-1. Re-run `download_geomarsh_layers.R` in R.
-2. Rebuild the tiles in Terminal:
+1. In R, run `download_geomarsh_layers.R`, then `make_display_layers.R`.
+2. In Terminal, `cd` into the `geomarsh_data` folder and run:
 
    ```bash
-   tippecanoe -o geomarsh.pmtiles -l grid -Z11 -z17 --force \
-     --drop-densest-as-needed --extend-zooms-if-still-dropping \
+   # Solid class polygons, all zoom levels
+   tippecanoe -o classes.pmtiles -Z11 -z16 --force \
+     --no-tile-size-limit --no-feature-limit --detect-shared-borders \
+     -L current:tiles_input/current_classes.geojson \
+     -L future:tiles_input/future_classes.geojson \
+     -L suitability:tiles_input/suitability_classes.geojson
+
+   # Individual cells for popups (only loaded when zoomed in)
+   tippecanoe -o detail.pmtiles -l detail -Z16 -z16 --force \
+     --no-tile-size-limit --no-feature-limit \
      tiles_input/current.geojson
    ```
 
-3. Replace `data/geomarsh.pmtiles` in this repo and push.
+3. Copy both `.pmtiles` files into this repo's `data/` folder (delete the old
+   `geomarsh.pmtiles`) and upload to GitHub.
+
+## Changing colors
+
+Edit `PRIORITY_COLORS` and `SUITABILITY_COLORS` near the top of `index.html`.
+Each list has five colors, for `< 0.5`, `0.5–0.6`, `0.6–0.75`, `0.75–0.9`, `> 0.9`.
 
 ## Testing locally
 
-Opening `index.html` by double-clicking won't load the tiles (browsers block that).
-Instead, in Terminal, from this folder:
+From this folder in Terminal:
 
 ```bash
 python3 -m http.server 8000
 ```
 
-Then go to <http://localhost:8000>. Press Control-C in Terminal to stop.
+Then go to <http://localhost:8000>. Press Control-C to stop.

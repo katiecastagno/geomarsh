@@ -8,41 +8,51 @@
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="https://unpkg.com/pmtiles@3.2.1/dist/pmtiles.js"></script>
 <style>
-  html, body { margin: 0; height: 100%; font: 14px/1.4 system-ui, -apple-system, sans-serif; }
-  #maps { position: absolute; inset: 0; }
-  #map, #compare { position: absolute; inset: 0; }
+  html, body { margin: 0; height: 100%; font: 14px/1.4 system-ui, -apple-system, sans-serif; color: #222; }
+  #maps, #map, #compare { position: absolute; inset: 0; }
   #compare { display: none; }
 
   #panel {
-    position: absolute; top: 12px; left: 12px; z-index: 5; width: 240px;
-    background: rgba(255,255,255,.95); padding: 12px 14px; border-radius: 8px;
+    position: absolute; top: 12px; left: 12px; z-index: 5; width: 250px;
+    max-height: calc(100% - 48px); overflow-y: auto;
+    background: rgba(255,255,255,.96); padding: 12px 14px; border-radius: 8px;
     box-shadow: 0 1px 6px rgba(0,0,0,.25);
   }
-  #panel h1 { font-size: 16px; margin: 0 0 8px; }
-  #panel label { display: block; margin: 8px 0 4px; font-weight: 600; }
-  #panel select { width: 100%; padding: 4px; font: inherit; }
-  #panel select:disabled { opacity: .5; }
-  .legend { margin-top: 10px; }
-  .legend div { display: flex; align-items: center; gap: 8px; margin: 3px 0; }
-  .legend span.sw { width: 18px; height: 14px; border: 1px solid #0003; }
-  .opacity { width: 100%; }
-  .note { font-size: 12px; color: #555; margin-top: 8px; }
+  #panel h1 { font-size: 16px; margin: 0 0 10px; }
+  .section { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #777; margin: 12px 0 6px; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 6px 0; }
+  .row .name { font-weight: 600; }
+  select { width: 100%; padding: 4px; font: inherit; margin-bottom: 6px; }
+  input[type=range] { width: 100%; }
+  .note { font-size: 12px; color: #666; margin-top: 10px; }
 
-  /* Swipe handle */
+  /* Toggle switch */
+  .switch { position: relative; width: 38px; height: 22px; flex: none; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .switch span { position: absolute; inset: 0; background: #ccc; border-radius: 22px; cursor: pointer; transition: .2s; }
+  .switch span::before { content: ""; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px;
+                         background: #fff; border-radius: 50%; transition: .2s; box-shadow: 0 1px 2px #0004; }
+  .switch input:checked + span { background: #2a7de1; }
+  .switch input:checked + span::before { transform: translateX(16px); }
+
+  .legend { margin: 2px 0 10px 4px; }
+  .legend div { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 2px 0; }
+  .legend .sw { width: 18px; height: 13px; border: 1px solid #0002; border-radius: 2px; }
+  .legend-title { font-size: 12px; font-weight: 600; margin: 6px 0 2px; }
+
+  /* Swipe handle + labels */
   #slider {
     display: none; position: absolute; top: 0; bottom: 0; width: 4px; margin-left: -2px;
-    background: #fff; z-index: 4; cursor: ew-resize; box-shadow: 0 0 4px rgba(0,0,0,.5);
+    background: #fff; z-index: 4; cursor: ew-resize; box-shadow: 0 0 4px rgba(0,0,0,.5); touch-action: none;
   }
   #slider::after {
     content: "◀ ▶"; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
     background: #fff; border-radius: 14px; padding: 4px 6px; font-size: 11px; white-space: nowrap;
     box-shadow: 0 0 4px rgba(0,0,0,.4);
   }
-  .tag {
-    display: none; position: absolute; top: 12px; z-index: 4; background: rgba(0,0,0,.65);
-    color: #fff; padding: 3px 8px; border-radius: 4px; font-size: 12px;
-  }
-  #tagL { left: 270px; } #tagR { right: 50px; }
+  .tag { display: none; position: absolute; bottom: 36px; z-index: 4; background: rgba(0,0,0,.7);
+         color: #fff; padding: 3px 8px; border-radius: 4px; font-size: 12px; }
+  #tagL { left: 12px; } #tagR { right: 12px; }
 
   .maplibregl-popup-content { font-size: 12px; max-height: 320px; overflow-y: auto; }
   .maplibregl-popup-content table { border-collapse: collapse; }
@@ -56,63 +66,70 @@
   <div id="map"></div>
   <div id="compare"></div>
   <div id="slider"></div>
-  <div class="tag" id="tagL">Current</div>
-  <div class="tag" id="tagR">Future</div>
+  <div class="tag" id="tagL"></div>
+  <div class="tag" id="tagR"></div>
 </div>
 
 <div id="panel">
   <h1>GeoMARSH: Chatham</h1>
 
-  <label for="field">Show score</label>
-  <select id="field">
-    <option value="Prioritization_Score_Current">Current prioritization</option>
-    <option value="Prioritization_Score_Future">Future prioritization</option>
-    <option value="Suitability_Score">Suitability</option>
-  </select>
+  <div class="row">
+    <span class="name">Swipe compare</span>
+    <label class="switch"><input type="checkbox" id="swipe"><span></span></label>
+  </div>
 
-  <label><input type="checkbox" id="swipe"> Swipe: Current | Future</label>
+  <div id="layersMode">
+    <div class="section">Layers</div>
+    <div id="layerList"></div>
+  </div>
 
-  <label for="opacity">Grid opacity</label>
-  <input type="range" id="opacity" class="opacity" min="0" max="1" step="0.05" value="0.8">
+  <div id="swipeMode" style="display:none">
+    <div class="section">Left side</div>
+    <select id="leftSel"></select>
+    <div class="section">Right side</div>
+    <select id="rightSel"></select>
+    <div id="swipeLegends"></div>
+  </div>
 
-  <div class="legend" id="legend"></div>
-  <div class="note">Click a cell for its component scores.</div>
+  <div class="section">Opacity</div>
+  <input type="range" id="opacity" min="0" max="1" step="0.05" value="0.85">
+
+  <div class="note">Zoom in and click a cell for its component scores.</div>
 </div>
 
 <script>
-// ---------------------------------------------------------------------------
-// Settings
-// ---------------------------------------------------------------------------
-const PMTILES_FILE = "data/geomarsh.pmtiles";
-const SOURCE_LAYER = "grid";                       // the -l name used in tippecanoe
+// ===========================================================================
+// Settings: edit colors here
+// ===========================================================================
 const BOUNDS = [[-70.0273, 41.6681], [-69.9730, 41.6828]];
+const CLASS_LABELS = ["< 0.5", "0.5–0.6", "0.6–0.75", "0.75–0.9", "> 0.9"];
 
-// Class breaks (match ArcGIS Online). Colors estimated from the AGOL legend.
-const CLASSES = [
-  { label: "< 0.5",    min: -Infinity, color: "#fbe8e6" },
-  { label: "0.5–0.6",  min: 0.5,       color: "#e8bcae" },
-  { label: "0.6–0.75", min: 0.6,       color: "#d08b75" },
-  { label: "0.75–0.9", min: 0.75,      color: "#b45a45" },
-  { label: "> 0.9",    min: 0.9,       color: "#ef7ad6" }
-];
+// Prioritization (Current & Future share one scheme so the swipe compares like with like)
+const PRIORITY_COLORS = ["#fff3b0", "#fdbb5a", "#f07c28", "#b8400b", "#e01fd0"];
+const SUITABILITY_COLORS = ["#d7301f", "#fc8d59", "#fee08b", "#a6d96a", "#1a9850"];
 
-// Friendly names for the popup
+// Your original AGOL colors, if you want to switch back:
+//   Current:     ["#fbe8e6", "#e8bcae", "#d08b75", "#b45a45", "#ef7ad6"]
+//   Future:      ["#9b9cf0", "#d3d2f7", "#4aa8e6", "#3a86a8", "#0f2470"]
+//   Suitability: ["#c46a68", "#c58a6c", "#c8a970", "#d0d272", "#a8c86c"]
+
+// Layers are listed top-to-bottom in draw order (first = on top)
+const SCORES = {
+  current:     { label: "Current prioritization", field: "Prioritization_Score_Current", colors: PRIORITY_COLORS,    on: true  },
+  future:      { label: "Future prioritization",  field: "Prioritization_Score_Future",  colors: PRIORITY_COLORS,    on: false },
+  suitability: { label: "Suitability",            field: "Suitability_Score",            colors: SUITABILITY_COLORS, on: false }
+};
+const KEYS = Object.keys(SCORES);
+
 const LABELS = {
-  GRID_ID: "Grid ID",
   Prioritization_Score_Current: "Current prioritization",
   Prioritization_Score_Future: "Future prioritization",
   Suitability_Score: "Suitability",
-  Elevation_Score: "Elevation",
-  Slope_Score: "Slope",
-  AccomProximity_Score: "Accommodation proximity",
-  AccomThickness_Score: "Accommodation thickness",
+  Elevation_Score: "Elevation", Slope_Score: "Slope",
+  AccomProximity_Score: "Accommodation proximity", AccomThickness_Score: "Accommodation thickness",
   SedAvailability_Score: "Sediment availability",
-  Status_Restricted: "Restricted",
-  Status_Unvegetated: "Unvegetated",
-  Status_Ditch: "Ditch",
-  Status_Phrag: "Phragmites",
-  Status_Marsh: "Marsh",
-  Status_Accommodation: "Accommodation"
+  Status_Restricted: "Restricted", Status_Unvegetated: "Unvegetated", Status_Ditch: "Ditch",
+  Status_Phrag: "Phragmites", Status_Marsh: "Marsh", Status_Accommodation: "Accommodation"
 };
 const POPUP_GROUPS = [
   ["Prioritization_Score_Current", "Prioritization_Score_Future", "Suitability_Score"],
@@ -120,154 +137,176 @@ const POPUP_GROUPS = [
   ["Status_Restricted", "Status_Unvegetated", "Status_Ditch", "Status_Phrag", "Status_Marsh", "Status_Accommodation"]
 ];
 
-// ---------------------------------------------------------------------------
+// ===========================================================================
 // Map setup
-// ---------------------------------------------------------------------------
+// ===========================================================================
 const protocol = new pmtiles.Protocol();
 maplibregl.addProtocol("pmtiles", protocol.tile);
-const pmUrl = "pmtiles://" + new URL(PMTILES_FILE, location.href).href;
+const pm = f => "pmtiles://" + new URL(f, location.href).href;
 
-function colorFor(field) {
-  const expr = ["step", ["coalesce", ["to-number", ["get", field]], -1], CLASSES[0].color];
-  CLASSES.slice(1).forEach(c => expr.push(c.min, c.color));
-  return expr;
-}
+const clsColor = colors => ["match", ["get", "cls"], 0, colors[0], 1, colors[1], 2, colors[2], 3, colors[3], 4, colors[4], "rgba(0,0,0,0)"];
 
-function makeStyle(field) {
+function makeStyle() {
+  const layers = [{ id: "imagery", type: "raster", source: "imagery" }];
+  [...KEYS].reverse().forEach(k => layers.push({
+    id: "cls-" + k, type: "fill", source: "classes", "source-layer": k,
+    layout: { visibility: "none" },
+    paint: { "fill-color": clsColor(SCORES[k].colors), "fill-opacity": 0.85, "fill-antialias": false }
+  }));
+  // Invisible full-detail cells, used only for click popups
+  layers.push({ id: "detail", type: "fill", source: "detail", "source-layer": "detail", minzoom: 16,
+                paint: { "fill-color": "#000", "fill-opacity": 0 } });
+  layers.push({ id: "detail-hl", type: "line", source: "detail", "source-layer": "detail", minzoom: 16,
+                filter: ["==", ["get", "GRID_ID"], "__none__"],
+                paint: { "line-color": "#00e5ff", "line-width": 2.5 } });
   return {
     version: 8,
     sources: {
-      imagery: {
-        type: "raster", tileSize: 256, maxzoom: 19,
+      imagery: { type: "raster", tileSize: 256, maxzoom: 19,
         tiles: ["https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
-        attribution: "Imagery © Esri, Maxar, Earthstar Geographics"
-      },
-      grid: { type: "vector", url: pmUrl, attribution: "GeoMARSH" }
+        attribution: "Imagery © Esri, Maxar, Earthstar Geographics" },
+      classes: { type: "vector", url: pm("data/classes.pmtiles"), attribution: "GeoMARSH" },
+      detail:  { type: "vector", url: pm("data/detail.pmtiles") }
     },
-    layers: [
-      { id: "imagery", type: "raster", source: "imagery" },
-      { id: "grid", type: "fill", source: "grid", "source-layer": SOURCE_LAYER,
-        paint: { "fill-color": colorFor(field), "fill-opacity": 0.8 } }
-    ]
+    layers
   };
 }
 
-const map = new maplibregl.Map({
-  container: "map", style: makeStyle("Prioritization_Score_Current"),
-  bounds: BOUNDS, fitBoundsOptions: { padding: 40 }, maxZoom: 20
-});
+const opts = { style: makeStyle(), bounds: BOUNDS, fitBoundsOptions: { padding: 40 }, maxZoom: 20 };
+const map = new maplibregl.Map({ container: "map", ...opts });
+const compare = new maplibregl.Map({ container: "compare", ...opts, attributionControl: false });
 map.addControl(new maplibregl.NavigationControl(), "top-right");
 map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-right");
+const loaded = Promise.all([map, compare].map(m => new Promise(r => m.once("load", r))));
 
-const compare = new maplibregl.Map({
-  container: "compare", style: makeStyle("Prioritization_Score_Future"),
-  bounds: BOUNDS, fitBoundsOptions: { padding: 40 }, maxZoom: 20, attributionControl: false
-});
-
-// ---------------------------------------------------------------------------
-// Keep the two maps' views in sync
-// ---------------------------------------------------------------------------
+// Keep views in sync
 let syncing = false;
 function syncFrom(src, dst) {
   src.on("move", () => {
     if (syncing) return;
     syncing = true;
-    dst.jumpTo({ center: src.getCenter(), zoom: src.getZoom(),
-                 bearing: src.getBearing(), pitch: src.getPitch() });
+    dst.jumpTo({ center: src.getCenter(), zoom: src.getZoom(), bearing: src.getBearing(), pitch: src.getPitch() });
     syncing = false;
   });
 }
-syncFrom(map, compare);
-syncFrom(compare, map);
+syncFrom(map, compare); syncFrom(compare, map);
 
-// ---------------------------------------------------------------------------
+// ===========================================================================
+// Panel
+// ===========================================================================
+const $ = id => document.getElementById(id);
+const legendHtml = k => `<div class="legend">` + SCORES[k].colors.map((c, i) =>
+  `<div><span class="sw" style="background:${c}"></span>${CLASS_LABELS[i]}</div>`).join("") + `</div>`;
+
+$("layerList").innerHTML = KEYS.map(k => `
+  <div class="row">
+    <span>${SCORES[k].label}</span>
+    <label class="switch"><input type="checkbox" data-key="${k}" ${SCORES[k].on ? "checked" : ""}><span></span></label>
+  </div>
+  <div id="leg-${k}">${legendHtml(k)}</div>`).join("");
+
+const options = KEYS.map(k => `<option value="${k}">${SCORES[k].label}</option>`).join("");
+$("leftSel").innerHTML = options; $("rightSel").innerHTML = options;
+$("leftSel").value = "current"; $("rightSel").value = "future";
+
+document.querySelectorAll("#layerList input").forEach(cb =>
+  cb.addEventListener("change", () => { SCORES[cb.dataset.key].on = cb.checked; apply(); }));
+["swipe", "leftSel", "rightSel"].forEach(id => $(id).addEventListener("change", apply));
+$("opacity").addEventListener("input", apply);
+
+function setVis(m, visibleKeys) {
+  KEYS.forEach(k => m.setLayoutProperty("cls-" + k, "visibility", visibleKeys.includes(k) ? "visible" : "none"));
+}
+
+async function apply() {
+  await loaded;
+  const swipe = $("swipe").checked;
+  const op = Number($("opacity").value);
+  [map, compare].forEach(m => KEYS.forEach(k => m.setPaintProperty("cls-" + k, "fill-opacity", op)));
+
+  $("layersMode").style.display = swipe ? "none" : "block";
+  $("swipeMode").style.display = swipe ? "block" : "none";
+  ["compare", "slider", "tagL", "tagR"].forEach(id => $(id).style.display = swipe ? "block" : "none");
+
+  if (swipe) {
+    const L = $("leftSel").value, R = $("rightSel").value;
+    setVis(map, [L]); setVis(compare, [R]);
+    $("tagL").textContent = "◀ " + SCORES[L].label;
+    $("tagR").textContent = SCORES[R].label + " ▶";
+    const legKeys = L === R ? [L] : [L, R];
+    $("swipeLegends").innerHTML = legKeys.map(k =>
+      `<div class="legend-title">${SCORES[k].label}</div>${legendHtml(k)}`).join("");
+    compare.resize();
+    compare.jumpTo({ center: map.getCenter(), zoom: map.getZoom(), bearing: map.getBearing(), pitch: map.getPitch() });
+    placeSlider();
+  } else {
+    setVis(map, KEYS.filter(k => SCORES[k].on));
+    KEYS.forEach(k => $("leg-" + k).style.display = SCORES[k].on ? "block" : "none");
+  }
+}
+apply();
+
+// ===========================================================================
+// Swipe handle
+// ===========================================================================
+let swipeX = 0.5, dragging = false;
+function placeSlider() {
+  const px = Math.round(swipeX * $("maps").clientWidth);
+  $("slider").style.left = px + "px";
+  $("compare").style.clipPath = `inset(0 0 0 ${px}px)`;
+}
+$("slider").addEventListener("pointerdown", e => { dragging = true; $("slider").setPointerCapture(e.pointerId); });
+$("slider").addEventListener("pointermove", e => {
+  if (!dragging) return;
+  const r = $("maps").getBoundingClientRect();
+  swipeX = Math.min(0.98, Math.max(0.02, (e.clientX - r.left) / r.width));
+  placeSlider();
+});
+$("slider").addEventListener("pointerup", () => dragging = false);
+window.addEventListener("resize", () => { if ($("swipe").checked) placeSlider(); });
+
+// ===========================================================================
 // Popups
-// ---------------------------------------------------------------------------
-function fmt(v) {
+// ===========================================================================
+const fmt = v => {
   if (v === null || v === undefined || v === "") return "–";
   const n = Number(v);
   return Number.isFinite(n) ? (Number.isInteger(n) ? String(n) : n.toFixed(3)) : String(v);
-}
-function esc(s) {
-  return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-}
-function popupHtml(p) {
+};
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+function detailHtml(p) {
   let html = `<b>Grid ${esc(fmt(p.GRID_ID))}</b><table>`;
-  POPUP_GROUPS.forEach((group, gi) => {
-    group.filter(k => k in p).forEach((k, i) => {
-      html += `<tr class="${gi > 0 && i === 0 ? "sep" : ""}"><td>${esc(LABELS[k] || k)}</td><td>${esc(fmt(p[k]))}</td></tr>`;
-    });
-  });
+  POPUP_GROUPS.forEach((group, gi) => group.filter(k => k in p).forEach((k, i) => {
+    html += `<tr class="${gi > 0 && i === 0 ? "sep" : ""}"><td>${esc(LABELS[k] || k)}</td><td>${esc(fmt(p[k]))}</td></tr>`;
+  }));
   return html + "</table>";
 }
+
 [map, compare].forEach(m => {
-  m.on("click", "grid", e => {
-    new maplibregl.Popup({ maxWidth: "280px" })
-      .setLngLat(e.lngLat).setHTML(popupHtml(e.features[0].properties)).addTo(m);
+  m.on("click", e => {
+    const cell = m.queryRenderedFeatures(e.point, { layers: ["detail"] })[0];
+    if (cell) {
+      m.setFilter("detail-hl", ["==", ["get", "GRID_ID"], cell.properties.GRID_ID]);
+      new maplibregl.Popup({ maxWidth: "280px" }).setLngLat(e.lngLat)
+        .setHTML(detailHtml(cell.properties)).addTo(m)
+        .on("close", () => m.setFilter("detail-hl", ["==", ["get", "GRID_ID"], "__none__"]));
+      return;
+    }
+    const hits = m.queryRenderedFeatures(e.point, { layers: KEYS.map(k => "cls-" + k) });
+    if (!hits.length) return;
+    const rows = hits.map(h => {
+      const k = h.layer.id.replace("cls-", "");
+      return `<tr><td>${esc(SCORES[k].label)}</td><td>${CLASS_LABELS[h.properties.cls]}</td></tr>`;
+    }).join("");
+    new maplibregl.Popup().setLngLat(e.lngLat)
+      .setHTML(`<table>${rows}</table><i>Zoom in further for cell details</i>`).addTo(m);
   });
-  m.on("mouseenter", "grid", () => m.getCanvas().style.cursor = "pointer");
-  m.on("mouseleave", "grid", () => m.getCanvas().style.cursor = "");
+  m.on("mousemove", e => {
+    const over = m.queryRenderedFeatures(e.point, { layers: KEYS.map(k => "cls-" + k) }).length > 0;
+    m.getCanvas().style.cursor = over ? "pointer" : "";
+  });
 });
-
-// ---------------------------------------------------------------------------
-// Controls: score dropdown, opacity, legend
-// ---------------------------------------------------------------------------
-const fieldSel = document.getElementById("field");
-const opacity = document.getElementById("opacity");
-
-document.getElementById("legend").innerHTML = CLASSES.map(c =>
-  `<div><span class="sw" style="background:${c.color}"></span>${c.label}</div>`).join("");
-
-fieldSel.addEventListener("change", () => {
-  map.setPaintProperty("grid", "fill-color", colorFor(fieldSel.value));
-});
-opacity.addEventListener("input", () => {
-  const v = Number(opacity.value);
-  [map, compare].forEach(m => { if (m.getLayer("grid")) m.setPaintProperty("grid", "fill-opacity", v); });
-});
-
-// ---------------------------------------------------------------------------
-// Swipe (Current on the left, Future on the right)
-// ---------------------------------------------------------------------------
-const swipeBox = document.getElementById("swipe");
-const slider = document.getElementById("slider");
-const compareDiv = document.getElementById("compare");
-const tags = [document.getElementById("tagL"), document.getElementById("tagR")];
-let swipeX = 0.5;   // fraction of the window width
-
-function placeSlider() {
-  const w = document.getElementById("maps").clientWidth;
-  const px = Math.round(swipeX * w);
-  slider.style.left = px + "px";
-  compareDiv.style.clipPath = `inset(0 0 0 ${px}px)`;
-}
-
-swipeBox.addEventListener("change", () => {
-  const on = swipeBox.checked;
-  compareDiv.style.display = slider.style.display = on ? "block" : "none";
-  tags.forEach(t => t.style.display = on ? "block" : "none");
-  fieldSel.disabled = on;
-  map.setPaintProperty("grid", "fill-color",
-    colorFor(on ? "Prioritization_Score_Current" : fieldSel.value));
-  if (on) {
-    compare.resize();
-    compare.jumpTo({ center: map.getCenter(), zoom: map.getZoom(),
-                     bearing: map.getBearing(), pitch: map.getPitch() });
-    if (compare.getLayer("grid")) compare.setPaintProperty("grid", "fill-opacity", Number(opacity.value));
-    placeSlider();
-  }
-});
-
-let dragging = false;
-slider.addEventListener("pointerdown", e => { dragging = true; slider.setPointerCapture(e.pointerId); });
-slider.addEventListener("pointermove", e => {
-  if (!dragging) return;
-  const rect = document.getElementById("maps").getBoundingClientRect();
-  swipeX = Math.min(0.98, Math.max(0.02, (e.clientX - rect.left) / rect.width));
-  placeSlider();
-});
-slider.addEventListener("pointerup", () => { dragging = false; });
-window.addEventListener("resize", () => { if (swipeBox.checked) placeSlider(); });
 </script>
 </body>
 </html>
