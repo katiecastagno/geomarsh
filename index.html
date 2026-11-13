@@ -2,63 +2,131 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>GeoMARSH: Chatham</title>
+<title>GeoMARSH (beta) · Chatham</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="https://unpkg.com/pmtiles@3.2.1/dist/pmtiles.js"></script>
 <style>
-  html, body { margin: 0; height: 100%; font: 14px/1.4 system-ui, -apple-system, sans-serif; color: #222; }
+  /* =========================================================================
+     THEME: Center for Coastal Studies colors (sampled from the CCS logo)
+     ========================================================================= */
+  :root {
+    --brand:       #006cb5;   /* CCS blue (logo rings): header, headings */
+    --brand-2:     #00819f;   /* CCS teal (whales & lettering): accents, switches */
+    --brand-light: #e5f2f6;   /* pale teal: highlight rows */
+    --ink:         #1d2a33;
+    --muted:       #6b7a85;
+    --card:        rgba(255,255,255,.97);
+    --radius:      12px;
+    --shadow:      0 6px 24px rgba(8,30,48,.22), 0 1px 3px rgba(8,30,48,.15);
+  }
+
+  html, body { margin: 0; height: 100%; font: 14px/1.45 "Source Sans 3", system-ui, -apple-system, sans-serif; color: var(--ink); }
   #maps, #map, #compare { position: absolute; inset: 0; }
   #compare { display: none; }
+  button { font: inherit; cursor: pointer; }
 
+  /* ---- Side panel ---- */
   #panel {
-    position: absolute; top: 12px; left: 12px; z-index: 5; width: 250px;
-    max-height: calc(100% - 48px); overflow-y: auto;
-    background: rgba(255,255,255,.96); padding: 12px 14px; border-radius: 8px;
-    box-shadow: 0 1px 6px rgba(0,0,0,.25);
+    position: absolute; top: 14px; left: 14px; z-index: 5; width: 315px;
+    max-height: calc(100% - 56px); display: flex; flex-direction: column;
+    background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden;
+    transition: transform .25s ease;
   }
-  #panel h1 { font-size: 16px; margin: 0 0 10px; }
-  .section { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #777; margin: 12px 0 6px; }
-  .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 6px 0; }
+  #panel.collapsed { transform: translateX(calc(-100% - 20px)); }
+
+  .header { background: var(--brand); color: #fff; padding: 14px 16px 12px; display: flex; gap: 12px; align-items: center; }
+  .header img { height: 54px; width: auto; flex: none; background: #fff; border-radius: 8px; padding: 4px; }
+  .header .titles { flex: 1; min-width: 0; }
+  .header h1 { margin: 0; font-size: 21px; font-weight: 700; letter-spacing: .01em; line-height: 1.1; }
+  .beta { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+          background: #fff; color: var(--brand-2); padding: 1px 6px; border-radius: 10px; vertical-align: 3px; margin-left: 4px; }
+  .header .sub { font-size: 12px; opacity: .85; margin-top: 3px; line-height: 1.25; }
+  .header-btns { display: flex; flex-direction: column; gap: 6px; align-self: flex-start; }
+  .icon-btn { background: rgba(255,255,255,.15); color: #fff; border: 0; width: 28px; height: 28px; border-radius: 50%;
+              font-size: 15px; line-height: 28px; padding: 0; }
+  .icon-btn:hover { background: rgba(255,255,255,.3); }
+
+  .body { padding: 0 16px 14px; overflow-y: auto; }
+  .section { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 14px 0 6px; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 0; }
   .row .name { font-weight: 600; }
-  select { width: 100%; padding: 4px; font: inherit; margin-bottom: 6px; }
-  input[type=range] { width: 100%; }
-  .note { font-size: 12px; color: #666; margin-top: 10px; }
+  .layer-row { border-top: 1px solid #edf0f2; }
+  .layer-row:first-child { border-top: 0; }
+  .compare-row { background: var(--brand-light); margin: 0 -16px; padding: 10px 16px; }
+  select { width: 100%; padding: 6px 8px; font: inherit; border: 1px solid #cfd8de; border-radius: 8px; background: #fff; margin-bottom: 4px; }
+  input[type=range] { width: 100%; accent-color: var(--brand-2); }
+  .note { font-size: 12px; color: var(--muted); margin-top: 12px; display: flex; gap: 6px; }
 
   /* Toggle switch */
   .switch { position: relative; width: 38px; height: 22px; flex: none; }
   .switch input { opacity: 0; width: 0; height: 0; }
-  .switch span { position: absolute; inset: 0; background: #ccc; border-radius: 22px; cursor: pointer; transition: .2s; }
+  .switch span { position: absolute; inset: 0; background: #c6ced4; border-radius: 22px; cursor: pointer; transition: .2s; }
   .switch span::before { content: ""; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px;
                          background: #fff; border-radius: 50%; transition: .2s; box-shadow: 0 1px 2px #0004; }
-  .switch input:checked + span { background: #2a7de1; }
+  .switch input:checked + span { background: var(--brand-2); }
   .switch input:checked + span::before { transform: translateX(16px); }
+  .switch input:focus-visible + span { outline: 2px solid var(--brand); outline-offset: 2px; }
 
-  .legend { margin: 2px 0 10px 4px; }
-  .legend div { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 2px 0; }
-  .legend .sw { width: 18px; height: 13px; border: 1px solid #0002; border-radius: 2px; }
-  .legend-title { font-size: 12px; font-weight: 600; margin: 6px 0 2px; }
+  /* Legend: compact horizontal bar */
+  .legend { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; margin: 2px 0 8px; }
+  .legend .sw { height: 12px; border-radius: 2px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.08); }
+  .legend .lab { font-size: 10.5px; color: var(--muted); text-align: center; white-space: nowrap; }
+  .legend-title { font-size: 12px; font-weight: 600; margin: 8px 0 3px; }
 
-  /* Swipe handle + labels */
+  /* Re-open tab when panel collapsed */
+  #openPanel { position: absolute; top: 14px; left: 14px; z-index: 4; display: none;
+               background: var(--brand); color: #fff; border: 0; border-radius: 10px; padding: 8px 12px;
+               box-shadow: var(--shadow); font-weight: 700; }
+  #openPanel.show { display: block; }
+
+  /* ---- About dialog ---- */
+  #about { position: absolute; inset: 0; z-index: 20; display: none; align-items: center; justify-content: center;
+           background: rgba(8,30,48,.45); backdrop-filter: blur(2px); }
+  #about.show { display: flex; }
+  .about-card { background: #fff; width: min(560px, calc(100% - 32px)); max-height: calc(100% - 48px); overflow-y: auto;
+                border-radius: var(--radius); box-shadow: var(--shadow); }
+  .about-card .header { padding: 18px 20px; }
+  .about-card .content { padding: 6px 22px 20px; }
+  .about-card h2 { font-size: 15px; color: var(--brand); margin: 16px 0 6px; }
+  .about-card p { margin: 6px 0; }
+  .about-card dl { margin: 0; }
+  .about-card dt { font-weight: 700; margin-top: 10px; display: flex; align-items: center; gap: 8px; }
+  .about-card dt .chip { width: 34px; height: 10px; border-radius: 3px; }
+  .about-card dd { margin: 2px 0 0; color: #34434e; }
+  .about-card .foot { font-size: 12px; color: var(--muted); border-top: 1px solid #edf0f2; padding-top: 10px; margin-top: 16px; }
+  .primary { background: var(--brand-2); color: #fff; border: 0; border-radius: 8px; padding: 9px 18px; font-weight: 700; margin-top: 14px; }
+  .primary:hover { filter: brightness(1.08); }
+
+  /* ---- Swipe handle + labels ---- */
   #slider {
     display: none; position: absolute; top: 0; bottom: 0; width: 4px; margin-left: -2px;
-    background: #fff; z-index: 4; cursor: ew-resize; box-shadow: 0 0 4px rgba(0,0,0,.5); touch-action: none;
+    background: #fff; z-index: 4; cursor: ew-resize; box-shadow: 0 0 6px rgba(0,0,0,.5); touch-action: none;
   }
   #slider::after {
     content: "◀ ▶"; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
-    background: #fff; border-radius: 14px; padding: 4px 6px; font-size: 11px; white-space: nowrap;
-    box-shadow: 0 0 4px rgba(0,0,0,.4);
+    background: var(--brand); color: #fff; border-radius: 16px; padding: 6px 8px; font-size: 11px; white-space: nowrap;
+    box-shadow: 0 2px 6px rgba(0,0,0,.4);
   }
-  .tag { display: none; position: absolute; bottom: 36px; z-index: 4; background: rgba(0,0,0,.7);
-         color: #fff; padding: 3px 8px; border-radius: 4px; font-size: 12px; }
-  #tagL { left: 12px; } #tagR { right: 12px; }
+  .tag { display: none; position: absolute; bottom: 36px; z-index: 4; background: var(--brand);
+         color: #fff; padding: 4px 10px; border-radius: 14px; font-size: 12px; font-weight: 600; box-shadow: var(--shadow); }
+  #tagL { left: 14px; } #tagR { right: 14px; }
 
-  .maplibregl-popup-content { font-size: 12px; max-height: 320px; overflow-y: auto; }
-  .maplibregl-popup-content table { border-collapse: collapse; }
-  .maplibregl-popup-content td { padding: 1px 6px 1px 0; }
-  .maplibregl-popup-content td:last-child { font-weight: 600; text-align: right; }
-  .maplibregl-popup-content tr.sep td { border-top: 1px solid #ddd; padding-top: 4px; }
+  /* ---- Popups ---- */
+  .maplibregl-popup-content { font: 12px/1.4 "Source Sans 3", system-ui, sans-serif; border-radius: 10px; padding: 12px 14px;
+                              max-height: 320px; overflow-y: auto; box-shadow: var(--shadow); }
+  .maplibregl-popup-content b { color: var(--brand); font-size: 13px; }
+  .maplibregl-popup-content table { border-collapse: collapse; margin-top: 4px; }
+  .maplibregl-popup-content td { padding: 1px 8px 1px 0; }
+  .maplibregl-popup-content td:last-child { font-weight: 700; text-align: right; }
+  .maplibregl-popup-content tr.sep td { border-top: 1px solid #e3e8eb; padding-top: 4px; }
+
+  @media (max-width: 600px) {
+    #panel { width: calc(100% - 28px); max-height: 55%; }
+  }
 </style>
 </head>
 <body>
@@ -70,31 +138,72 @@
   <div class="tag" id="tagR"></div>
 </div>
 
+<button id="openPanel" title="Show panel">☰ GeoMARSH</button>
+
 <div id="panel">
-  <h1>GeoMARSH: Chatham</h1>
-
-  <div class="row">
-    <span class="name">Swipe compare</span>
-    <label class="switch"><input type="checkbox" id="swipe"><span></span></label>
+  <div class="header">
+    <img src="logo.png" alt="Center for Coastal Studies" onerror="this.remove()">
+    <div class="titles">
+      <h1>GeoMARSH<span class="beta">beta</span></h1>
+      <div class="sub">Chatham, MA</div>
+    </div>
+    <div class="header-btns">
+      <button class="icon-btn" id="infoBtn" title="About GeoMARSH">i</button>
+      <button class="icon-btn" id="hidePanel" title="Hide panel">‹</button>
+    </div>
   </div>
 
-  <div id="layersMode">
-    <div class="section">Layers</div>
-    <div id="layerList"></div>
+  <div class="body">
+    <div class="row compare-row">
+      <span class="name">Swipe compare</span>
+      <label class="switch"><input type="checkbox" id="swipe"><span></span></label>
+    </div>
+
+    <div id="layersMode">
+      <div class="section">Layers</div>
+      <div id="layerList"></div>
+    </div>
+
+    <div id="swipeMode" style="display:none">
+      <div class="section">Left side</div>
+      <select id="leftSel"></select>
+      <div class="section">Right side</div>
+      <select id="rightSel"></select>
+      <div id="swipeLegends"></div>
+    </div>
+
+    <div class="section">Opacity</div>
+    <input type="range" id="opacity" min="0" max="1" step="0.05" value="0.85">
+
+    <div class="note"><span>ⓘ</span><span>Zoom in and click a cell to see all of its component scores.</span></div>
   </div>
+</div>
 
-  <div id="swipeMode" style="display:none">
-    <div class="section">Left side</div>
-    <select id="leftSel"></select>
-    <div class="section">Right side</div>
-    <select id="rightSel"></select>
-    <div id="swipeLegends"></div>
+<div id="about" role="dialog" aria-modal="true" aria-labelledby="aboutTitle">
+  <div class="about-card">
+    <div class="header">
+      <img src="logo.png" alt="Center for Coastal Studies" onerror="this.remove()">
+      <div class="titles">
+        <h1 id="aboutTitle">GeoMARSH<span class="beta">beta</span></h1>
+        <div class="sub">Geospatial Marsh Assessment and Ranking: Sediment Health</div>
+      </div>
+      <div class="header-btns"><button class="icon-btn" id="closeAbout" title="Close">✕</button></div>
+    </div>
+    <div class="content">
+      <p>GeoMARSH is a GIS-based data model that combines geologic and spatial data in salt marshes to score
+         marsh <b>suitability</b> and <b>prioritization</b>, for current and future decision makers.</p>
+
+      <h2>The layers</h2>
+      <dl id="aboutLayers"></dl>
+
+      <h2>Using the map</h2>
+      <p>Turn layers on and off with the switches, or turn on <b>Swipe compare</b> and drag the handle to compare
+         any two layers side by side. Zoom in and click a grid cell to see every component score.</p>
+
+      <div class="foot">Center for Coastal Studies · This is a beta release; data and scores may change.</div>
+      <button class="primary" id="startBtn">Explore the map</button>
+    </div>
   </div>
-
-  <div class="section">Opacity</div>
-  <input type="range" id="opacity" min="0" max="1" step="0.05" value="0.85">
-
-  <div class="note">Zoom in and click a cell for its component scores.</div>
 </div>
 
 <script>
@@ -105,8 +214,9 @@ const BOUNDS = [[-70.0273, 41.6681], [-69.9730, 41.6828]];
 const CLASS_LABELS = ["< 0.5", "0.5–0.6", "0.6–0.75", "0.75–0.9", "> 0.9"];
 
 // Each list: < 0.5, 0.5–0.6, 0.6–0.75, 0.75–0.9, > 0.9 (the last is a standout accent)
-const CURRENT_COLORS     = ["#fff3b0", "#fdbb5a", "#f07c28", "#b8400b", "#e01fd0"];  // warm ramp, magenta top
-const FUTURE_COLORS      = ["#dff3f6", "#8fd0dc", "#3a9fc4", "#1f5a9e", "#ffd000"];  // cool ramp, gold top
+// The first four step evenly along one hue path; > 0.9 continues that path at full saturation so it pops.
+const CURRENT_COLORS     = ["#fbe7c6", "#f4b77e", "#e5835a", "#c4504f", "#ff1493"];  // cream → coral → brick → hot pink
+const FUTURE_COLORS      = ["#e2f2f4", "#a3d3dc", "#5ca3c4", "#3a5ea6", "#8a2be2"];  // ice → teal → blue → electric violet
 const SUITABILITY_COLORS = ["#d7301f", "#fc8d59", "#fee08b", "#a6d96a", "#1a9850"];
 
 // Your original AGOL colors, if you want to switch back:
@@ -116,9 +226,12 @@ const SUITABILITY_COLORS = ["#d7301f", "#fc8d59", "#fee08b", "#a6d96a", "#1a9850
 
 // Layers are listed top-to-bottom in draw order (first = on top)
 const SCORES = {
-  current:     { label: "Current prioritization", field: "Prioritization_Score_Current", colors: CURRENT_COLORS,     on: true  },
-  future:      { label: "Future prioritization",  field: "Prioritization_Score_Future",  colors: FUTURE_COLORS,      on: false },
-  suitability: { label: "Suitability",            field: "Suitability_Score",            colors: SUITABILITY_COLORS, on: false }
+  current:     { label: "Current prioritization", field: "Prioritization_Score_Current", colors: CURRENT_COLORS,     on: true,
+                 about: "Builds on suitability, adding estimated sediment availability and current marsh presence. Higher scores indicate greater priority." },
+  future:      { label: "Future prioritization",  field: "Prioritization_Score_Future",  colors: FUTURE_COLORS,      on: false,
+                 about: "Builds on suitability and sediment availability, and considers whether the area falls within the estimated 2050 accommodation space. Higher scores indicate greater priority." },
+  suitability: { label: "Suitability",            field: "Suitability_Score",            colors: SUITABILITY_COLORS, on: false,
+                 about: "Reflects marsh presence and migration potential, based on slope, elevation, proximity to accommodation space, and the area of that space. Higher scores indicate greater suitability." }
 };
 const KEYS = Object.keys(SCORES);
 
@@ -196,12 +309,13 @@ syncFrom(map, compare); syncFrom(compare, map);
 // Panel
 // ===========================================================================
 const $ = id => document.getElementById(id);
-const legendHtml = k => `<div class="legend">` + SCORES[k].colors.map((c, i) =>
-  `<div><span class="sw" style="background:${c}"></span>${CLASS_LABELS[i]}</div>`).join("") + `</div>`;
+const legendHtml = k => `<div class="legend">` +
+  SCORES[k].colors.map(c => `<span class="sw" style="background:${c}"></span>`).join("") +
+  CLASS_LABELS.map(l => `<span class="lab">${l}</span>`).join("") + `</div>`;
 
 $("layerList").innerHTML = KEYS.map(k => `
-  <div class="row">
-    <span>${SCORES[k].label}</span>
+  <div class="row layer-row">
+    <span class="name">${SCORES[k].label}</span>
     <label class="switch"><input type="checkbox" data-key="${k}" ${SCORES[k].on ? "checked" : ""}><span></span></label>
   </div>
   <div id="leg-${k}">${legendHtml(k)}</div>`).join("");
@@ -246,6 +360,34 @@ async function apply() {
   }
 }
 apply();
+
+// ===========================================================================
+// About dialog + panel collapse
+// ===========================================================================
+$("aboutLayers").innerHTML = KEYS.map(k => `
+  <dt><span class="chip" style="background:linear-gradient(90deg, ${SCORES[k].colors.join(",")})"></span>${SCORES[k].label}</dt>
+  <dd>${SCORES[k].about}</dd>`).join("");
+
+const showAbout = () => $("about").classList.add("show");
+function hideAbout() {
+  $("about").classList.remove("show");
+  try { localStorage.setItem("geomarsh-about-seen", "1"); } catch (e) {}
+}
+$("infoBtn").addEventListener("click", showAbout);
+$("closeAbout").addEventListener("click", hideAbout);
+$("startBtn").addEventListener("click", hideAbout);
+$("about").addEventListener("click", e => { if (e.target.id === "about") hideAbout(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") hideAbout(); });
+let seen = false;
+try { seen = localStorage.getItem("geomarsh-about-seen") === "1"; } catch (e) {}
+if (!seen) showAbout();
+
+$("hidePanel").addEventListener("click", () => {
+  $("panel").classList.add("collapsed"); $("openPanel").classList.add("show");
+});
+$("openPanel").addEventListener("click", () => {
+  $("panel").classList.remove("collapsed"); $("openPanel").classList.remove("show");
+});
 
 // ===========================================================================
 // Swipe handle
