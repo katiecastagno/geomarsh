@@ -85,8 +85,17 @@
   .chip-btn:hover { border-color: var(--brand-2); }
   .chip-btn[aria-pressed="true"] { background: var(--brand-light); border-color: var(--brand-2); color: var(--brand); }
   .chip-btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
-  .section .clear { float: right; background: none; border: 0; padding: 0; color: var(--brand-2);
-                    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; display: none; }
+  .section-row { display: flex; align-items: center; justify-content: space-between; margin: 14px 0 6px; }
+  .section-row .section { margin: 0; }
+  .disclosure { background: none; border: 0; padding: 0; display: flex; align-items: center; gap: 5px; }
+  .disclosure:hover { color: var(--brand-2); }
+  .disclosure:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 3px; }
+  .disclosure .arrow { display: inline-block; font-size: 9px; transition: transform .15s; }
+  .disclosure[aria-expanded="true"] .arrow { transform: rotate(90deg); }
+  .disclosure .count { color: var(--brand-2); text-transform: none; letter-spacing: 0; font-size: 11.5px; }
+  .clear { background: none; border: 0; padding: 0; color: var(--brand-2);
+           font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; display: none; }
+  #flagBody { padding-bottom: 2px; }
 
   /* Re-open tab when panel collapsed */
   #openPanel { position: absolute; top: 14px; left: 14px; z-index: 4; display: none;
@@ -183,8 +192,13 @@
       <div id="swipeLegends"></div>
     </div>
 
-    <div class="section">Highlight <button class="clear" id="clearFlags">Clear</button></div>
-    <div class="chips" id="flagChips"></div>
+    <div class="section-row">
+      <button class="section disclosure" id="flagToggle" aria-expanded="false" aria-controls="flagBody">
+        <span class="arrow">▶</span>Highlight <span class="count" id="flagCount"></span>
+      </button>
+      <button class="clear" id="clearFlags">Clear</button>
+    </div>
+    <div id="flagBody" hidden><div class="chips" id="flagChips"></div></div>
 
     <div class="section">Opacity</div>
     <input type="range" id="opacity" min="0" max="1" step="0.05" value="0.85">
@@ -262,13 +276,15 @@ const LABELS = {
 };
 // Status flags for the Highlight chips. `layer` is the merged-outline layer in classes.pmtiles
 // (made by make_display_layers.R); cells where the field = 1 are drawn in this color, on top.
+// Optional `pattern`: "stripes" (black stripes over `color`) or "crosshatch" (see-through
+// hatching in `color`, with an outline), so those two stand apart from the solid colors.
 const FLAGS = [
-  { field: "Status_Restricted",    layer: "flag_restricted",    label: "Restricted",    color: "#ffd400" },
+  { field: "Status_Restricted",    layer: "flag_restricted",    label: "Restricted",    color: "#ffd400", pattern: "stripes" },
   { field: "Status_Ditch",         layer: "flag_ditch",         label: "Ditch",         color: "#00e5ff" },
   { field: "Status_Phrag",         layer: "flag_phrag",         label: "Phragmites",    color: "#7cfc00" },
   { field: "Status_Unvegetated",   layer: "flag_unvegetated",   label: "Unvegetated",   color: "#ffffff" },
   { field: "Status_Marsh",         layer: "flag_marsh",         label: "Marsh",         color: "#1b7f4b" },
-  { field: "Status_Accommodation", layer: "flag_accommodation", label: "Accommodation", color: "#ff7f00" }
+  { field: "Status_Accommodation", layer: "flag_accommodation", label: "Accommodation", color: "#111111", pattern: "crosshatch" }
 ];
 const FLAG_OPACITY = 0.9;
 
@@ -295,11 +311,15 @@ function makeStyle() {
     paint: { "fill-color": clsColor(SCORES[k].colors), "fill-opacity": 0.85, "fill-antialias": false }
   }));
   // Highlighted status areas (merged outlines from classes.pmtiles, drawn above the class colors)
-  FLAGS.forEach(f => layers.push({
-    id: "flag-" + f.field, type: "fill", source: "classes", "source-layer": f.layer,
-    layout: { visibility: "none" },
-    paint: { "fill-color": f.color, "fill-opacity": FLAG_OPACITY, "fill-antialias": false }
-  }));
+  FLAGS.forEach(f => {
+    const base = { source: "classes", "source-layer": f.layer, layout: { visibility: "none" } };
+    layers.push({ id: "flag-" + f.field, type: "fill", ...base,
+      paint: f.pattern
+        ? { "fill-pattern": "pat-" + f.field, "fill-opacity": f.pattern === "crosshatch" ? 1 : FLAG_OPACITY, "fill-antialias": false }
+        : { "fill-color": f.color, "fill-opacity": FLAG_OPACITY, "fill-antialias": false } });
+    if (f.pattern === "crosshatch") layers.push({ id: "flagline-" + f.field, type: "line", ...base,
+      paint: { "line-color": f.color, "line-width": 2 } });
+  });
   // Invisible full-detail cells, used only for click popups.
   // No minzoom here: they appear at whatever zoom detail.pmtiles was built from (tippecanoe -Z).
   layers.push({ id: "detail", type: "fill", source: "detail", "source-layer": "detail",
@@ -325,7 +345,41 @@ const map = new maplibregl.Map({ container: "map", ...opts });
 const compare = new maplibregl.Map({ container: "compare", ...opts, attributionControl: false });
 map.addControl(new maplibregl.NavigationControl(), "top-right");
 map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-right");
-const loaded = Promise.all([map, compare].map(m => new Promise(r => m.once("load", r))));
+const loaded = Promise.all([map, compare].map(m => new Promise(r => m.once("load", () => { addPatterns(m); r(); }))));
+
+// Striped / hatched fills for flags that have a `pattern`
+function patternImage(kind, color) {
+  const pr = 2, s = 12 * pr, c = document.createElement("canvas");
+  c.width = c.height = s;
+  const x = c.getContext("2d");
+  const diag = (offsets, up) => offsets.forEach(o => {
+    x.beginPath();
+    if (up) { x.moveTo(o, s); x.lineTo(o + s, 0); } else { x.moveTo(o, 0); x.lineTo(o + s, s); }
+    x.stroke();
+  });
+  if (kind === "stripes") {
+    x.fillStyle = color; x.fillRect(0, 0, s, s);
+    x.strokeStyle = "#111"; x.lineWidth = 1.8 * pr;
+    diag([-s, -s / 2, 0, s / 2, s], true);
+  } else {                                   // crosshatch: haloed lines, see-through between
+    [["#fff", 3 * pr], [color, 1.3 * pr]].forEach(([col, w]) => {
+      x.strokeStyle = col; x.lineWidth = w;
+      diag([-s, 0, s], true); diag([-s, 0, s], false);
+    });
+  }
+  return { img: { width: s, height: s, data: x.getImageData(0, 0, s, s).data }, pr };
+}
+function addPatterns(m) {
+  FLAGS.filter(f => f.pattern).forEach(f => {
+    const { img, pr } = patternImage(f.pattern, f.color);
+    if (!m.hasImage("pat-" + f.field)) m.addImage("pat-" + f.field, img, { pixelRatio: pr });
+  });
+}
+// CSS version of each swatch, for the chip dots
+const swatchCss = f =>
+  f.pattern === "stripes" ? `repeating-linear-gradient(45deg, #111 0 1.5px, ${f.color} 1.5px 3.5px)` :
+  f.pattern === "crosshatch" ? `repeating-linear-gradient(45deg, ${f.color} 0 1px, transparent 1px 3px), repeating-linear-gradient(-45deg, ${f.color} 0 1px, transparent 1px 3px), #fff` :
+  f.color;
 
 // Keep views in sync
 let syncing = false;
@@ -401,7 +455,7 @@ apply();
 const flagOn = new Set();
 $("flagChips").innerHTML = FLAGS.map(f => `
   <button class="chip-btn" data-field="${f.field}" aria-pressed="false">
-    <span class="dot" style="background:${f.color}"></span>${f.label}
+    <span class="dot" style="background:${swatchCss(f)}"></span>${f.label}
   </button>`).join("");
 
 document.querySelectorAll("#flagChips .chip-btn").forEach(btn =>
@@ -411,14 +465,22 @@ document.querySelectorAll("#flagChips .chip-btn").forEach(btn =>
     applyFlags();
   }));
 $("clearFlags").addEventListener("click", () => { flagOn.clear(); applyFlags(); });
+$("flagToggle").addEventListener("click", () => {
+  const open = $("flagToggle").getAttribute("aria-expanded") !== "true";
+  $("flagToggle").setAttribute("aria-expanded", open);
+  $("flagBody").hidden = !open;
+});
 
 async function applyFlags() {
   document.querySelectorAll("#flagChips .chip-btn").forEach(btn =>
     btn.setAttribute("aria-pressed", flagOn.has(btn.dataset.field) ? "true" : "false"));
   $("clearFlags").style.display = flagOn.size ? "inline" : "none";
+  $("flagCount").textContent = flagOn.size ? `· ${flagOn.size} on` : "";
   await loaded;
-  [map, compare].forEach(m => FLAGS.forEach(f =>
-    m.setLayoutProperty("flag-" + f.field, "visibility", flagOn.has(f.field) ? "visible" : "none")));
+  [map, compare].forEach(m => FLAGS.forEach(f => ["flag-", "flagline-"].forEach(pre => {
+    if (m.getLayer(pre + f.field))
+      m.setLayoutProperty(pre + f.field, "visibility", flagOn.has(f.field) ? "visible" : "none");
+  })));
 }
 
 // ===========================================================================
