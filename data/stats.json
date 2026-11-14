@@ -1,0 +1,17 @@
+{
+  "units": "acres",
+  "date": "November 2026",
+  "layers": {
+    "current": [41.11, 43.21, 40.15, 73.35, 26.74],
+    "future": [65.69, 49.50, 13.57, 52.93, 42.88],
+    "suitability": [22.92, 13.74, 58.30, 107.48, 39.81]
+  },
+  "flags": {
+    "restricted": 5.56,
+    "ditch": 2.98,
+    "phrag": 14.18,
+    "unvegetated": 4.44,
+    "marsh": 135.68,
+    "accommodation": 121.40
+  }
+}

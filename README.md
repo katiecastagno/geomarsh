@@ -9,10 +9,12 @@ hosted for free on GitHub Pages.
 ```
 geomarsh-viewer/
 ├── index.html
+├── chatham-logo.png      # partner logo shown in the About box
 ├── README.md
 └── data/
     ├── classes.pmtiles     # solid class polygons + status-flag outlines (what you see)
-    └── detail.pmtiles      # individual cells with all attributes (click popups)
+    ├── detail.pmtiles      # individual cells with all attributes (click popups)
+    └── stats.json          # acres per class and status (the "Area by class" table)
 ```
 
 ## Features
@@ -22,7 +24,12 @@ geomarsh-viewer/
 - Highlight chips for the status flags (Restricted, Ditch, Phragmites, Unvegetated, Marsh,
   Accommodation): turn one or more on to draw those areas on top of the map at any zoom
 - Click a cell (zoomed in) for all component scores and status flags; the cell is outlined
-- Opacity slider
+- "Show scores" filter to hide everything below a score class
+- "Area by class" table (acres), from `data/stats.json`
+- Satellite or light-gray basemap, and an opacity slider
+- Place search (limited to the Chatham area), a reset-view button (⌂), and a copy-link button (🔗):
+  the address bar always holds the current view, layers, highlights and filter, so any link opens
+  exactly what you were looking at
 
 ## Building / updating the data
 
@@ -50,8 +57,13 @@ geomarsh-viewer/
      tiles_input/current.geojson
    ```
 
-3. Copy both `.pmtiles` files into this repo's `data/` folder (delete the old
-   `geomarsh.pmtiles`) and upload to GitHub.
+3. Copy both `.pmtiles` files and `stats.json` (all in `geomarsh_data/`) into this repo's
+   `data/` folder and upload to GitHub.
+
+## Editing the About box
+
+Fill in the `ABOUT` list near the top of `index.html` (version, citation, report link, data download
+link, contact, funding). Anything left as `""` is hidden.
 
 ## Changing colors
 

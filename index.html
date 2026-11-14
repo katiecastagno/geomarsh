@@ -97,6 +97,49 @@
            font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; display: none; }
   #flagBody { padding-bottom: 2px; }
 
+  /* Segmented buttons (score filter, basemap) */
+  .seg { display: flex; border: 1px solid #cfd8de; border-radius: 8px; overflow: hidden; flex: 1; }
+  .seg button { flex: 1; background: #fff; border: 0; border-left: 1px solid #cfd8de; padding: 5px 0;
+                font-size: 12px; font-weight: 600; color: var(--ink); }
+  .seg button:first-child { border-left: 0; }
+  .seg button:hover { background: var(--brand-light); }
+  .seg button[aria-pressed="true"] { background: var(--brand-2); color: #fff; }
+  .seg button:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+  .display-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .display-row .lab { font-size: 12.5px; font-weight: 600; width: 58px; flex: none; }
+  .legend .off { opacity: .2; }
+
+  /* Area totals */
+  .stats { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; }
+  .stats th { font-size: 10.5px; color: var(--muted); font-weight: 700; text-align: right; padding: 2px 0 3px 6px; }
+  .stats td { text-align: right; padding: 2px 0 2px 6px; border-top: 1px solid #edf0f2; }
+  .stats th:first-child, .stats td:first-child { text-align: left; padding-left: 0; }
+  .stats tr.total td { font-weight: 700; }
+  .stats-note { font-size: 11px; color: var(--muted); margin: 4px 0 8px; }
+
+  /* Place search (top right of the map) */
+  #search { position: absolute; top: 10px; right: 50px; z-index: 3; width: 250px; }
+  #search form { position: relative; margin: 0; }
+  #search .ico { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; display: flex; }
+  #search input { width: 100%; box-sizing: border-box; padding: 8px 10px 8px 30px; border: 0; border-radius: 8px;
+                  box-shadow: var(--shadow); font: inherit; font-size: 13px; background: #fff; }
+  #search input:focus { outline: 2px solid var(--brand-2); }
+  #results { list-style: none; margin: 4px 0 0; padding: 4px; background: #fff; border-radius: 8px; box-shadow: var(--shadow);
+             max-height: 260px; overflow-y: auto; }
+  #results:empty { display: none; }
+  #results button { width: 100%; text-align: left; background: none; border: 0; padding: 6px 8px; border-radius: 6px; font-size: 12.5px; }
+  #results button:hover, #results button:focus-visible { background: var(--brand-light); outline: none; }
+  #results .msg { padding: 6px 8px; color: var(--muted); font-size: 12.5px; }
+  #results .src { padding: 2px 8px 2px; color: var(--muted); font-size: 10.5px; }
+
+  /* Small map buttons (reset view, copy link) */
+  .ctl-btn svg { width: 17px; height: 17px; display: block; margin: auto; fill: none; stroke: #333; stroke-width: 2;
+                 stroke-linecap: round; stroke-linejoin: round; }
+
+  #toast { position: absolute; left: 50%; bottom: 42px; transform: translateX(-50%); z-index: 30; background: var(--ink); color: #fff;
+           padding: 7px 14px; border-radius: 16px; font-size: 12.5px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+  #toast.show { opacity: 1; }
+
   /* Re-open tab when panel collapsed */
   #openPanel { position: absolute; top: 14px; left: 14px; z-index: 4; display: none;
                background: var(--brand); color: #fff; border: 0; border-radius: 10px; padding: 8px 12px;
@@ -117,6 +160,10 @@
   .about-card dt { font-weight: 700; margin-top: 10px; display: flex; align-items: center; gap: 8px; }
   .about-card dt .chip { width: 34px; height: 10px; border-radius: 3px; }
   .about-card dd { margin: 2px 0 0; color: #34434e; }
+  .about-card .meta dt { display: block; margin-top: 8px; }
+  .about-card a { color: var(--brand); }
+  .partner-logos { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin-top: 8px; }
+  .partner-logos img { height: 44px; width: auto; }
   .about-card .foot { font-size: 12px; color: var(--muted); border-top: 1px solid #edf0f2; padding-top: 10px; margin-top: 16px; }
   .primary { background: var(--brand-2); color: #fff; border: 0; border-radius: 8px; padding: 9px 18px; font-weight: 700; margin-top: 14px; }
   .primary:hover { filter: brightness(1.08); }
@@ -146,6 +193,7 @@
 
   @media (max-width: 600px) {
     #panel { width: calc(100% - 28px); max-height: 55%; }
+    #search { top: auto; bottom: 44px; left: 14px; right: 56px; width: auto; }
   }
 </style>
 </head>
@@ -156,6 +204,14 @@
   <div id="slider"></div>
   <div class="tag" id="tagL"></div>
   <div class="tag" id="tagR"></div>
+  <div id="search">
+    <form id="searchForm" role="search">
+      <span class="ico"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg></span>
+      <input type="search" id="searchInput" placeholder="Search a place in Chatham" aria-label="Search a place" autocomplete="off">
+    </form>
+    <ul id="results"></ul>
+  </div>
+  <div id="toast" role="status"></div>
 </div>
 
 <button id="openPanel" title="Show panel">☰ GeoMARSH</button>
@@ -192,6 +248,9 @@
       <div id="swipeLegends"></div>
     </div>
 
+    <div class="section">Show scores</div>
+    <div class="display-row"><div class="seg" id="minSeg" role="group" aria-label="Show scores at or above"></div></div>
+
     <div class="section-row">
       <button class="section disclosure" id="flagToggle" aria-expanded="false" aria-controls="flagBody">
         <span class="arrow">▶</span>Highlight <span class="count" id="flagCount"></span>
@@ -200,8 +259,18 @@
     </div>
     <div id="flagBody" hidden><div class="chips" id="flagChips"></div></div>
 
-    <div class="section">Opacity</div>
-    <input type="range" id="opacity" min="0" max="1" step="0.05" value="0.85">
+    <div id="statsWrap" hidden>
+      <div class="section-row">
+        <button class="section disclosure" id="statsToggle" aria-expanded="false" aria-controls="statsBody">
+          <span class="arrow">▶</span>Area by class
+        </button>
+      </div>
+      <div id="statsBody" hidden></div>
+    </div>
+
+    <div class="section">Display</div>
+    <div class="display-row"><span class="lab">Basemap</span><div class="seg" id="baseSeg" role="group" aria-label="Basemap"></div></div>
+    <div class="display-row"><span class="lab">Opacity</span><input type="range" id="opacity" min="0" max="1" step="0.05" value="0.85" aria-label="Layer opacity"></div>
 
     <div class="note"><span>ⓘ</span><span>Zoom in and click a cell to see all of its component scores.</span></div>
   </div>
@@ -227,7 +296,11 @@
       <h2>Using the map</h2>
       <p>Turn layers on and off with the switches, or turn on <b>Swipe compare</b> and drag the handle to compare
          any two layers side by side. Use the <b>Highlight</b> chips to mark cells with a given status, such as
-         ditches or restricted areas. Zoom in and click a grid cell to see every component score.</p>
+         ditches or restricted areas, and <b>Show scores</b> to hide everything below a score. Zoom in and click a
+         grid cell to see every component score. The search box finds places in Chatham, ⌂ zooms back out to the whole
+         site, and 🔗 copies a link to exactly what you're looking at.</p>
+
+      <div id="aboutMeta"></div>
 
       <div class="foot">Center for Coastal Studies · This is a beta release; data and scores may change.</div>
       <button class="primary" id="startBtn">Explore the map</button>
@@ -263,6 +336,8 @@ const SCORES = {
                  about: "Reflects marsh presence and migration potential, based on slope, elevation, proximity to accommodation space, and the area of that space. Higher scores indicate greater suitability." }
 };
 const KEYS = Object.keys(SCORES);
+// Order the layers are described in the About box
+const ABOUT_ORDER = ["suitability", "current", "future"];
 
 const LABELS = {
   Prioritization_Score_Current: "Current prioritization",
@@ -288,11 +363,53 @@ const FLAGS = [
 ];
 const FLAG_OPACITY = 0.9;
 
+// Score filter buttons ("Show scores"): 0 = all classes, 1 = 0.5 and up, ... 4 = > 0.9 only
+const MIN_LABELS = ["All", "0.5+", "0.6+", "0.75+", "> 0.9"];
+
+// About box details. Leave any of these "" to hide that line.
+const ABOUT = {
+  version:  "",   // e.g. "Data version 1.0, October 2026"
+  citation: "Castagno, K. A., Solazzo, D., and Borrelli, M. (2025). Appendix 4 in: Appendices to \u201cStudies for Preservation of Four Salt Marshes: Forest Beach, Cockle Cove, Bucks Creek, and Oyster River.\u201d Prepared by the Coastal Processes and Ecosystems Laboratory at the Center for Coastal Studies. August 2025.",
+  report:   "",   // link to a report or methods document (https://...)
+  download: "",   // link to download the data (https://...)
+  contact:  "Dr. Katie Castagno, kcastagno@coastalstudies.org",   // emails become links
+  funding:  "GeoMARSH was developed by the Center for Coastal Studies for the Town of Chatham, MA, as part of the Town-funded project \u201cStudies for Preservation of Four Salt Marshes: Forest Beach, Cockle Cove, Bucks Creek, and Oyster River.\u201d",
+  logos:    [ { src: "chatham-logo.png", alt: "Town of Chatham, Massachusetts" } ]   // partner logos (files in the repo)
+};
+
+// Place search is limited to this box around Chatham: [west, south, east, north]
+const SEARCH_BOX = [-70.07, 41.63, -69.91, 41.74];
+
 const POPUP_GROUPS = [
   ["Prioritization_Score_Current", "Prioritization_Score_Future", "Suitability_Score"],
   ["Elevation_Score", "Slope_Score", "AccomProximity_Score", "AccomThickness_Score", "SedAvailability_Score"],
   ["Status_Restricted", "Status_Unvegetated", "Status_Ditch", "Status_Phrag", "Status_Marsh", "Status_Accommodation"]
 ];
+
+// ===========================================================================
+// Shared helpers
+// ===========================================================================
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const flagKey = f => f.layer.replace(/^flag_/, "");     // short name used in links, e.g. "ditch"
+
+// ===========================================================================
+// Read a shared link (everything after # in the address)
+// ===========================================================================
+const H = new URLSearchParams(location.hash.slice(1));
+let startView = null;
+if (H.get("map")) {
+  const [z, lat, lng] = H.get("map").split("/").map(Number);
+  if ([z, lat, lng].every(Number.isFinite)) startView = { zoom: z, center: [lng, lat] };
+}
+if (H.has("layers")) {
+  const on = H.get("layers").split(",");
+  KEYS.forEach(k => SCORES[k].on = on.includes(k));
+}
+const state = {
+  min: Math.min(4, Math.max(0, parseInt(H.get("min"), 10) || 0)),
+  base: H.get("base") === "gray" ? "gray" : "satellite"
+};
 
 // ===========================================================================
 // Map setup
@@ -304,7 +421,11 @@ const pm = f => "pmtiles://" + new URL(f, location.href).href;
 const clsColor = colors => ["match", ["get", "cls"], 0, colors[0], 1, colors[1], 2, colors[2], 3, colors[3], 4, colors[4], "rgba(0,0,0,0)"];
 
 function makeStyle() {
-  const layers = [{ id: "imagery", type: "raster", source: "imagery" }];
+  const sat = state.base === "satellite" ? "visible" : "none", gray = sat === "visible" ? "none" : "visible";
+  const layers = [
+    { id: "imagery", type: "raster", source: "imagery", layout: { visibility: sat } },
+    { id: "gray",    type: "raster", source: "gray",    layout: { visibility: gray } }
+  ];
   [...KEYS].reverse().forEach(k => layers.push({
     id: "cls-" + k, type: "fill", source: "classes", "source-layer": k,
     layout: { visibility: "none" },
@@ -320,6 +441,8 @@ function makeStyle() {
     if (f.pattern === "crosshatch") layers.push({ id: "flagline-" + f.field, type: "line", ...base,
       paint: { "line-color": f.color, "line-width": 2 } });
   });
+  // Place labels for the gray basemap, above the data
+  layers.push({ id: "grayRef", type: "raster", source: "grayRef", layout: { visibility: gray } });
   // Invisible full-detail cells, used only for click popups.
   // No minzoom here: they appear at whatever zoom detail.pmtiles was built from (tippecanoe -Z).
   layers.push({ id: "detail", type: "fill", source: "detail", "source-layer": "detail",
@@ -333,6 +456,11 @@ function makeStyle() {
       imagery: { type: "raster", tileSize: 256, maxzoom: 19,
         tiles: ["https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
         attribution: "Imagery © Esri, Maxar, Earthstar Geographics" },
+      gray: { type: "raster", tileSize: 256, maxzoom: 16,
+        tiles: ["https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}"],
+        attribution: "Basemap © Esri, HERE, Garmin, © OpenStreetMap contributors" },
+      grayRef: { type: "raster", tileSize: 256, maxzoom: 16,
+        tiles: ["https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}"] },
       classes: { type: "vector", url: pm("data/classes.pmtiles"), attribution: "GeoMARSH" },
       detail:  { type: "vector", url: pm("data/detail.pmtiles") }
     },
@@ -340,10 +468,27 @@ function makeStyle() {
   };
 }
 
-const opts = { style: makeStyle(), bounds: BOUNDS, fitBoundsOptions: { padding: 40 }, maxZoom: 20 };
+const opts = { style: makeStyle(), maxZoom: 20,
+  ...(startView || { bounds: BOUNDS, fitBoundsOptions: { padding: 40 } }) };
 const map = new maplibregl.Map({ container: "map", ...opts });
 const compare = new maplibregl.Map({ container: "compare", ...opts, attributionControl: false });
 map.addControl(new maplibregl.NavigationControl(), "top-right");
+
+// Reset-view and copy-link buttons, under the zoom buttons
+const ICONS = {
+  home: '<svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>',
+  link: '<svg viewBox="0 0 24 24"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>'
+};
+map.addControl({
+  onAdd() {
+    const div = document.createElement("div");
+    div.className = "maplibregl-ctrl maplibregl-ctrl-group";
+    div.innerHTML = `<button class="ctl-btn" id="homeBtn" title="Zoom to the whole site" aria-label="Zoom to the whole site">${ICONS.home}</button>
+                     <button class="ctl-btn" id="linkBtn" title="Copy a link to this view" aria-label="Copy a link to this view">${ICONS.link}</button>`;
+    return div;
+  },
+  onRemove() {}
+}, "top-right");
 map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-right");
 const loaded = Promise.all([map, compare].map(m => new Promise(r => m.once("load", () => { addPatterns(m); r(); }))));
 
@@ -396,10 +541,10 @@ syncFrom(map, compare); syncFrom(compare, map);
 // ===========================================================================
 // Panel
 // ===========================================================================
-const $ = id => document.getElementById(id);
 const legendHtml = k => `<div class="legend">` +
-  SCORES[k].colors.map(c => `<span class="sw" style="background:${c}"></span>`).join("") +
-  CLASS_LABELS.map(l => `<span class="lab">${l}</span>`).join("") + `</div>`;
+  SCORES[k].colors.map((c, i) => `<span class="sw${i < state.min ? " off" : ""}" style="background:${c}"></span>`).join("") +
+  CLASS_LABELS.map((l, i) => `<span class="lab${i < state.min ? " off" : ""}">${l}</span>`).join("") + `</div>`;
+const renderLegends = () => KEYS.forEach(k => $("leg-" + k).innerHTML = legendHtml(k));
 
 $("layerList").innerHTML = KEYS.map(k => `
   <div class="row layer-row">
@@ -411,6 +556,25 @@ $("layerList").innerHTML = KEYS.map(k => `
 const options = KEYS.map(k => `<option value="${k}">${SCORES[k].label}</option>`).join("");
 $("leftSel").innerHTML = options; $("rightSel").innerHTML = options;
 $("leftSel").value = "current"; $("rightSel").value = "future";
+
+// Swipe and opacity from a shared link
+if (H.get("swipe")) {
+  const [L, R] = H.get("swipe").split(",");
+  if (KEYS.includes(L) && KEYS.includes(R)) { $("swipe").checked = true; $("leftSel").value = L; $("rightSel").value = R; }
+}
+if (H.has("op") && Number.isFinite(Number(H.get("op")))) $("opacity").value = H.get("op");
+
+// Segmented buttons
+function makeSeg(id, labels, current, onPick) {
+  $(id).innerHTML = labels.map((l, i) => `<button data-i="${i}" aria-pressed="${i === current}">${l}</button>`).join("");
+  $(id).querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
+    $(id).querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b));
+    onPick(Number(b.dataset.i));
+  }));
+}
+makeSeg("minSeg", MIN_LABELS, state.min, i => { state.min = i; renderLegends(); apply(); });
+const BASES = ["satellite", "gray"];
+makeSeg("baseSeg", ["Satellite", "Light gray"], BASES.indexOf(state.base), i => { state.base = BASES[i]; apply(); });
 
 document.querySelectorAll("#layerList input").forEach(cb =>
   cb.addEventListener("change", () => { SCORES[cb.dataset.key].on = cb.checked; apply(); }));
@@ -425,7 +589,13 @@ async function apply() {
   await loaded;
   const swipe = $("swipe").checked;
   const op = Number($("opacity").value);
-  [map, compare].forEach(m => KEYS.forEach(k => m.setPaintProperty("cls-" + k, "fill-opacity", op)));
+  const clsFilter = state.min > 0 ? [">=", ["get", "cls"], state.min] : null;
+  [map, compare].forEach(m => {
+    KEYS.forEach(k => { m.setPaintProperty("cls-" + k, "fill-opacity", op); m.setFilter("cls-" + k, clsFilter); });
+    const sat = state.base === "satellite";
+    m.setLayoutProperty("imagery", "visibility", sat ? "visible" : "none");
+    ["gray", "grayRef"].forEach(id => m.setLayoutProperty(id, "visibility", sat ? "none" : "visible"));
+  });
 
   $("layersMode").style.display = swipe ? "none" : "block";
   $("swipeMode").style.display = swipe ? "block" : "none";
@@ -446,13 +616,16 @@ async function apply() {
     setVis(map, KEYS.filter(k => SCORES[k].on));
     KEYS.forEach(k => $("leg-" + k).style.display = SCORES[k].on ? "block" : "none");
   }
+  renderStats();
+  writeHash();
 }
 apply();
 
 // ===========================================================================
 // Highlight chips
 // ===========================================================================
-const flagOn = new Set();
+const flagOn = new Set((H.get("hl") || "").split(",")
+  .map(key => FLAGS.find(f => flagKey(f) === key)).filter(Boolean).map(f => f.field));
 $("flagChips").innerHTML = FLAGS.map(f => `
   <button class="chip-btn" data-field="${f.field}" aria-pressed="false">
     <span class="dot" style="background:${swatchCss(f)}"></span>${f.label}
@@ -470,6 +643,7 @@ $("flagToggle").addEventListener("click", () => {
   $("flagToggle").setAttribute("aria-expanded", open);
   $("flagBody").hidden = !open;
 });
+if (flagOn.size) { $("flagToggle").click(); applyFlags(); }
 
 async function applyFlags() {
   document.querySelectorAll("#flagChips .chip-btn").forEach(btn =>
@@ -481,14 +655,127 @@ async function applyFlags() {
     if (m.getLayer(pre + f.field))
       m.setLayoutProperty(pre + f.field, "visibility", flagOn.has(f.field) ? "visible" : "none");
   })));
+  writeHash();
 }
+
+// ===========================================================================
+// Area by class (reads data/stats.json, made by make_display_layers.R)
+// ===========================================================================
+let STATS = null;
+const acres = v => v >= 100 ? Math.round(v).toLocaleString() : v >= 10 ? v.toFixed(0) : v.toFixed(1);
+fetch("data/stats.json").then(r => r.ok ? r.json() : null).then(j => {
+  if (!j || !j.layers) return;
+  STATS = j; $("statsWrap").hidden = false; renderStats();
+}).catch(() => {});
+$("statsToggle").addEventListener("click", () => {
+  const open = $("statsToggle").getAttribute("aria-expanded") !== "true";
+  $("statsToggle").setAttribute("aria-expanded", open);
+  $("statsBody").hidden = !open;
+});
+function renderStats() {
+  if (!STATS) return;
+  const keys = KEYS.filter(k => STATS.layers[k]);
+  const short = { current: "Current", future: "Future", suitability: "Suit." };
+  let html = `<table class="stats"><tr><th>Score</th>${keys.map(k => `<th>${short[k] || esc(SCORES[k].label)}</th>`).join("")}</tr>`;
+  CLASS_LABELS.forEach((l, i) => {
+    if (i < state.min) return;
+    html += `<tr><td>${l}</td>${keys.map(k => `<td>${acres(STATS.layers[k][i] || 0)}</td>`).join("")}</tr>`;
+  });
+  html += `<tr class="total"><td>${state.min ? "Shown" : "Total"}</td>${keys.map(k =>
+    `<td>${acres(STATS.layers[k].slice(state.min).reduce((a, b) => a + b, 0))}</td>`).join("")}</tr></table>`;
+  if (STATS.flags) {
+    html += `<table class="stats" style="margin-top:8px"><tr><th>Status</th><th>Area</th></tr>` +
+      FLAGS.filter(f => flagKey(f) in STATS.flags).map(f =>
+        `<tr><td>${esc(f.label)}</td><td>${acres(STATS.flags[flagKey(f)])}</td></tr>`).join("") + `</table>`;
+  }
+  html += `<div class="stats-note">Acres${STATS.date ? ` · computed ${esc(STATS.date)}` : ""}</div>`;
+  $("statsBody").innerHTML = html;
+}
+
+// ===========================================================================
+// Shareable link: keep the address bar in step with the view
+// ===========================================================================
+function writeHash() {
+  const c = map.getCenter(), parts = [`map=${map.getZoom().toFixed(2)}/${c.lat.toFixed(5)}/${c.lng.toFixed(5)}`];
+  if ($("swipe").checked) parts.push(`swipe=${$("leftSel").value},${$("rightSel").value}`);
+  else parts.push(`layers=${KEYS.filter(k => SCORES[k].on).join(",")}`);
+  if (flagOn.size)
+    parts.push(`hl=${FLAGS.filter(f => flagOn.has(f.field)).map(flagKey).join(",")}`);
+  if (state.min) parts.push(`min=${state.min}`);
+  if (state.base !== "satellite") parts.push(`base=${state.base}`);
+  if (Number($("opacity").value) !== 0.85) parts.push(`op=${$("opacity").value}`);
+  history.replaceState(null, "", "#" + parts.join("&"));
+}
+map.on("moveend", writeHash);
+
+let toastTimer;
+function toast(msg) {
+  $("toast").textContent = msg; $("toast").classList.add("show");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => $("toast").classList.remove("show"), 2200);
+}
+$("linkBtn").addEventListener("click", async () => {
+  writeHash();
+  try { await navigator.clipboard.writeText(location.href); toast("Link copied: it opens this exact view"); }
+  catch (e) { toast("Couldn't copy. Copy the address bar instead."); }
+});
+$("homeBtn").addEventListener("click", () => map.fitBounds(BOUNDS, { padding: 40 }));
+
+// ===========================================================================
+// Place search (OpenStreetMap Nominatim, limited to the Chatham area)
+// ===========================================================================
+let searchMarker = null;
+$("searchForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const q = $("searchInput").value.trim();
+  if (!q) return;
+  $("results").innerHTML = `<li class="msg">Searching…</li>`;
+  const url = "https://nominatim.openstreetmap.org/search?" + new URLSearchParams({
+    q, format: "json", limit: "6", bounded: "1", viewbox: SEARCH_BOX.join(","), "accept-language": "en"
+  });
+  try {
+    const hits = await (await fetch(url)).json();
+    if (!hits.length) { $("results").innerHTML = `<li class="msg">No matches near the site.</li>`; return; }
+    $("results").innerHTML = hits.map((h, i) =>
+      `<li><button data-i="${i}">${esc(h.display_name.split(",").slice(0, 3).join(","))}</button></li>`).join("") +
+      `<li class="src">Search: © OpenStreetMap contributors</li>`;
+    $("results").querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
+      const h = hits[Number(b.dataset.i)], ll = [Number(h.lon), Number(h.lat)];
+      const bb = (h.boundingbox || []).map(Number);       // [south, north, west, east]
+      if (bb.length === 4 && bb.every(Number.isFinite) && (bb[1] - bb[0] > 0.0005 || bb[3] - bb[2] > 0.0005))
+        map.fitBounds([[bb[2], bb[0]], [bb[3], bb[1]]], { padding: 60, maxZoom: 17 });
+      else map.flyTo({ center: ll, zoom: 17 });
+      if (searchMarker) searchMarker.remove();
+      searchMarker = new maplibregl.Marker({ color: "#006cb5" }).setLngLat(ll).addTo(map);
+      $("results").innerHTML = "";
+    }));
+  } catch (err) {
+    $("results").innerHTML = `<li class="msg">Search isn't available right now.</li>`;
+  }
+});
+$("searchInput").addEventListener("input", () => { if (!$("searchInput").value) $("results").innerHTML = ""; });
+document.addEventListener("keydown", e => { if (e.key === "Escape") $("results").innerHTML = ""; });
 
 // ===========================================================================
 // About dialog + panel collapse
 // ===========================================================================
-$("aboutLayers").innerHTML = KEYS.map(k => `
+$("aboutLayers").innerHTML = ABOUT_ORDER.map(k => `
   <dt><span class="chip" style="background:linear-gradient(90deg, ${SCORES[k].colors.join(",")})"></span>${SCORES[k].label}</dt>
   <dd>${SCORES[k].about}</dd>`).join("");
+
+const link = (href, text) => `<a href="${esc(href)}" target="_blank" rel="noopener">${esc(text)}</a>`;
+const withEmails = s => esc(s).replace(/([\w.+-]+@[\w-]+\.[\w.-]+)/g, '<a href="mailto:$1">$1</a>');
+const meta = [
+  ["Data version", ABOUT.version && esc(ABOUT.version)],
+  ["Methods citation", ABOUT.citation && esc(ABOUT.citation)],
+  ["Report", ABOUT.report && link(ABOUT.report, "Read the report / methods")],
+  ["Download", ABOUT.download && link(ABOUT.download, "Download the GeoMARSH data")],
+  ["Contact", ABOUT.contact && withEmails(ABOUT.contact)],
+  ["Developed for", (ABOUT.funding || (ABOUT.logos || []).length) && esc(ABOUT.funding) +
+    ((ABOUT.logos || []).length ? `<div class="partner-logos">` + ABOUT.logos.map(l =>
+      `<img src="${esc(l.src)}" alt="${esc(l.alt || "")}" onerror="this.remove()">`).join("") + `</div>` : "")]
+].filter(([, v]) => v);
+if (meta.length) $("aboutMeta").innerHTML = `<h2>Data & credits</h2><dl class="meta">` +
+  meta.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("") + `</dl>`;
 
 const showAbout = () => $("about").classList.add("show");
 function hideAbout() {
@@ -538,8 +825,6 @@ const fmt = v => {
   const n = Number(v);
   return Number.isFinite(n) ? (Number.isInteger(n) ? String(n) : n.toFixed(3)) : String(v);
 };
-const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-
 function detailHtml(p) {
   let html = `<b>Grid ${esc(fmt(p.GRID_ID))}</b><table>`;
   POPUP_GROUPS.forEach((group, gi) => group.filter(k => k in p).forEach((k, i) => {
