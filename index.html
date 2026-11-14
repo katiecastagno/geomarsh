@@ -85,8 +85,6 @@
   .chip-btn:hover { border-color: var(--brand-2); }
   .chip-btn[aria-pressed="true"] { background: var(--brand-light); border-color: var(--brand-2); color: var(--brand); }
   .chip-btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
-  .hint { font-size: 11.5px; color: var(--muted); margin-top: 6px; display: none; }
-  .hint.show { display: block; }
   .section .clear { float: right; background: none; border: 0; padding: 0; color: var(--brand-2);
                     font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; display: none; }
 
@@ -187,7 +185,6 @@
 
     <div class="section">Highlight <button class="clear" id="clearFlags">Clear</button></div>
     <div class="chips" id="flagChips"></div>
-    <div class="hint" id="flagHint">Zoom in to see highlighted cells.</div>
 
     <div class="section">Opacity</div>
     <input type="range" id="opacity" min="0" max="1" step="0.05" value="0.85">
@@ -216,7 +213,7 @@
       <h2>Using the map</h2>
       <p>Turn layers on and off with the switches, or turn on <b>Swipe compare</b> and drag the handle to compare
          any two layers side by side. Use the <b>Highlight</b> chips to mark cells with a given status, such as
-         ditches or restricted areas (visible when zoomed in). Zoom in and click a grid cell to see every component score.</p>
+         ditches or restricted areas. Zoom in and click a grid cell to see every component score.</p>
 
       <div class="foot">Center for Coastal Studies · This is a beta release; data and scores may change.</div>
       <button class="primary" id="startBtn">Explore the map</button>
@@ -263,14 +260,15 @@ const LABELS = {
   Status_Restricted: "Restricted", Status_Unvegetated: "Unvegetated", Status_Ditch: "Ditch",
   Status_Phrag: "Phragmites", Status_Marsh: "Marsh", Status_Accommodation: "Accommodation"
 };
-// Status flags for the Highlight chips (cells where the field = 1 are drawn in this color, on top)
+// Status flags for the Highlight chips. `layer` is the merged-outline layer in classes.pmtiles
+// (made by make_display_layers.R); cells where the field = 1 are drawn in this color, on top.
 const FLAGS = [
-  { field: "Status_Restricted",    label: "Restricted",    color: "#ffd400" },
-  { field: "Status_Ditch",         label: "Ditch",         color: "#00e5ff" },
-  { field: "Status_Phrag",         label: "Phragmites",    color: "#7cfc00" },
-  { field: "Status_Unvegetated",   label: "Unvegetated",   color: "#ffffff" },
-  { field: "Status_Marsh",         label: "Marsh",         color: "#1b7f4b" },
-  { field: "Status_Accommodation", label: "Accommodation", color: "#ff7f00" }
+  { field: "Status_Restricted",    layer: "flag_restricted",    label: "Restricted",    color: "#ffd400" },
+  { field: "Status_Ditch",         layer: "flag_ditch",         label: "Ditch",         color: "#00e5ff" },
+  { field: "Status_Phrag",         layer: "flag_phrag",         label: "Phragmites",    color: "#7cfc00" },
+  { field: "Status_Unvegetated",   layer: "flag_unvegetated",   label: "Unvegetated",   color: "#ffffff" },
+  { field: "Status_Marsh",         layer: "flag_marsh",         label: "Marsh",         color: "#1b7f4b" },
+  { field: "Status_Accommodation", layer: "flag_accommodation", label: "Accommodation", color: "#ff7f00" }
 ];
 const FLAG_OPACITY = 0.9;
 
@@ -296,17 +294,17 @@ function makeStyle() {
     layout: { visibility: "none" },
     paint: { "fill-color": clsColor(SCORES[k].colors), "fill-opacity": 0.85, "fill-antialias": false }
   }));
-  // Highlighted status cells (drawn above the class colors; shown wherever detail tiles exist)
+  // Highlighted status areas (merged outlines from classes.pmtiles, drawn above the class colors)
   FLAGS.forEach(f => layers.push({
-    id: "flag-" + f.field, type: "fill", source: "detail", "source-layer": "detail",
+    id: "flag-" + f.field, type: "fill", source: "classes", "source-layer": f.layer,
     layout: { visibility: "none" },
-    filter: ["==", ["to-number", ["get", f.field], 0], 1],
     paint: { "fill-color": f.color, "fill-opacity": FLAG_OPACITY, "fill-antialias": false }
   }));
-  // Invisible full-detail cells, used only for click popups
-  layers.push({ id: "detail", type: "fill", source: "detail", "source-layer": "detail", minzoom: 16,
+  // Invisible full-detail cells, used only for click popups.
+  // No minzoom here: they appear at whatever zoom detail.pmtiles was built from (tippecanoe -Z).
+  layers.push({ id: "detail", type: "fill", source: "detail", "source-layer": "detail",
                 paint: { "fill-color": "#000", "fill-opacity": 0 } });
-  layers.push({ id: "detail-hl", type: "line", source: "detail", "source-layer": "detail", minzoom: 16,
+  layers.push({ id: "detail-hl", type: "line", source: "detail", "source-layer": "detail",
                 filter: ["==", ["get", "GRID_ID"], "__none__"],
                 paint: { "line-color": "#ffffff", "line-width": 3 } });
   return {
@@ -414,8 +412,6 @@ document.querySelectorAll("#flagChips .chip-btn").forEach(btn =>
   }));
 $("clearFlags").addEventListener("click", () => { flagOn.clear(); applyFlags(); });
 
-// The detail tiles only exist from this zoom up (read from the file itself)
-let detailMinZoom = 16;
 async function applyFlags() {
   document.querySelectorAll("#flagChips .chip-btn").forEach(btn =>
     btn.setAttribute("aria-pressed", flagOn.has(btn.dataset.field) ? "true" : "false"));
@@ -423,17 +419,7 @@ async function applyFlags() {
   await loaded;
   [map, compare].forEach(m => FLAGS.forEach(f =>
     m.setLayoutProperty("flag-" + f.field, "visibility", flagOn.has(f.field) ? "visible" : "none")));
-  updateHint();
 }
-function updateHint() {
-  $("flagHint").classList.toggle("show", flagOn.size > 0 && map.getZoom() < detailMinZoom);
-}
-map.on("zoom", updateHint);
-loaded.then(() => {
-  const src = map.getSource("detail");
-  if (src && Number.isFinite(src.minzoom)) detailMinZoom = src.minzoom;
-  updateHint();
-});
 
 // ===========================================================================
 // About dialog + panel collapse

@@ -11,7 +11,7 @@ geomarsh-viewer/
 ├── index.html
 ├── README.md
 └── data/
-    ├── classes.pmtiles     # solid, dissolved class polygons (what you see)
+    ├── classes.pmtiles     # solid class polygons + status-flag outlines (what you see)
     └── detail.pmtiles      # individual cells with all attributes (click popups)
 ```
 
@@ -20,7 +20,7 @@ geomarsh-viewer/
 - On/off switches for Current prioritization, Future prioritization, and Suitability
 - Swipe compare between any two layers
 - Highlight chips for the status flags (Restricted, Ditch, Phragmites, Unvegetated, Marsh,
-  Accommodation): turn one or more on to draw those cells on top of the map (shown when zoomed in)
+  Accommodation): turn one or more on to draw those areas on top of the map at any zoom
 - Click a cell (zoomed in) for all component scores and status flags; the cell is outlined
 - Opacity slider
 
@@ -35,10 +35,17 @@ geomarsh-viewer/
      --no-tile-size-limit --no-feature-limit --detect-shared-borders \
      -L current:tiles_input/current_classes.geojson \
      -L future:tiles_input/future_classes.geojson \
-     -L suitability:tiles_input/suitability_classes.geojson
+     -L suitability:tiles_input/suitability_classes.geojson \
+     -L flag_restricted:tiles_input/flag_restricted.geojson \
+     -L flag_ditch:tiles_input/flag_ditch.geojson \
+     -L flag_phrag:tiles_input/flag_phrag.geojson \
+     -L flag_unvegetated:tiles_input/flag_unvegetated.geojson \
+     -L flag_marsh:tiles_input/flag_marsh.geojson \
+     -L flag_accommodation:tiles_input/flag_accommodation.geojson
 
-   # Individual cells for popups (only loaded when zoomed in)
-   tippecanoe -o detail.pmtiles -l detail -Z16 -z16 --force \
+   # Individual cells for click popups. -Z14 is the zoom where clicking a cell starts
+   # to work; use a lower number to click from further out (bigger file).
+   tippecanoe -o detail.pmtiles -l detail -Z14 -z16 --force \
      --no-tile-size-limit --no-feature-limit \
      tiles_input/current.geojson
    ```
